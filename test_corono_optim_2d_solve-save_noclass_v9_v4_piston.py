@@ -67,7 +67,7 @@ SegRobustness = True
 if SegRobustness:
     amplitude = 1e-3
 rMask = 2.9       # Mask radius = rho0 - 1
-cDarkHole =    # Contrast imposed in the dark region if problem_name = 'MaxTau'
+cDarkHole = 7   # Contrast imposed in the dark region if problem_name = 'MaxTau'
 OD_LS = 0.90
 gray = 'False'
 oversampling = 1
@@ -82,7 +82,7 @@ solver       = 'gurobipy' #,'stdgrb' #  'gurobipy', 'scipy.linprog'
 nFPM = 50                       # FPM DIAMETER IN PIXELS
 Fmax2d = 35 #   45 #22.5
 nImg2d = 140 #  90 #45         
-# dark zone bounds (inner and outer edges) in lam0/D unit It computes the intensity on D plane only in the DZ --> TO MODIFY
+
 rho0 =  3.0
 rho1 = 10.0 
 tau   = 0.6 # tau (integrated Pupil transmission) if problem_name = 'MaxContrast'
@@ -221,10 +221,8 @@ for k in range(nProgRef):
         print(f'Nombre de segments contraints (dans le quadrant) = {n_segments_qrt}')
 
         for seg_id in segment_ids_qrt:
-            # Créer le masque binaire du segment UNIQUEMENT sur le quart
             mask_qrt = (pupil_indexed_qrt == seg_id).astype(float)
             pupil_complex_qrt = Pupil2d_qrt * mask_qrt
-            # On l'ajoute à notre nouvelle liste
             list_Pupil2d_AB_qrt.append(pupil_complex_qrt)
     
 
@@ -286,7 +284,6 @@ for k in range(nProgRef):
     aaa      = np.arange((corono0.nImg2d//2)**2)
     dist     = np.reshape(dist2d_qrt, (corono0.nImg2d//2)**2)
 
-    # On garde tous les points qui sont dans la Dark Zone
     idx_dz = np.where(dz == 1)[0].tolist() 
     ndz = len(idx_dz)
 
@@ -444,7 +441,6 @@ for k in range(nProgRef):
                     model.addConstr( (-list_PsiD_AB_re[k] + list_PsiD_AB_im[k]).T @ Apo - Psigrad <= 0)
                     model.addConstr( (-list_PsiD_AB_re[k] - list_PsiD_AB_im[k]).T @ Apo - Psigrad <= 0)
                 else:
-                    # Cas purement réel (Méthode de Taylor / Gradient au premier ordre)
                     model.addConstr( list_PsiD_AB_re[k].T @ Apo - Psigrad <= 0)
                     model.addConstr(-list_PsiD_AB_re[k].T @ Apo - Psigrad <= 0)
             
@@ -500,19 +496,12 @@ for k in range(nProgRef):
     print(f'Apodizer generation time : {time.perf_counter() - t_e:.2f}s\n')
     
     #%%
-    # On utilise la dimension réelle de ta pupille actuelle
     current_dim = Apod_full_2d.shape[0]
-
-    # 1. Identification des zones
     nzp0 = (np.abs(Apod_full_2d) <= 1e-2)
     nzp1 = (np.abs(Apod_full_2d - 1.0) <= 1e-2)
-
-    # 2. Création de la carte des zones grises (le gradient)
     Gray_2d = np.ones((current_dim, current_dim))
     Gray_2d[nzp0] = 0.
     Gray_2d[nzp1] = 0.
-
-    # 3. Création de la carte des zones transparentes
     Ones_2d = np.zeros((current_dim, current_dim))
     Ones_2d[np.abs(Apod_full_2d) > 0.99] = 1.0
 

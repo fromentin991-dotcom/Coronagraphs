@@ -147,7 +147,6 @@ def compute_response_matrices(idx_pup, idx_dz, npp, ndz, ImPart, Pupil2d, mask2d
         return None, None
         
     corono_field_re_t_tmp = np.empty((npp, corono.nlam, corono.nImg2d**2))
-    # On initialise corono_field_im_t à None par défaut
     corono_field_im_t = None
     Apod2d = np.zeros((corono.nPup, corono.nPup))
 
@@ -171,7 +170,6 @@ def compute_response_matrices(idx_pup, idx_dz, npp, ndz, ImPart, Pupil2d, mask2d
         for i, val in enumerate(idx_pup):
             (i0, j0) = np.unravel_index(val, (corono.nPup, corono.nPup))
             Apod2d[i0, j0] = 1            
-            # Correction ici : on prend le .real.flatten() pour être cohérent avec le type
             field_complex = compute_corono_field_2d_full(Apod2d, Pupil2d, corono.LyotStop2d, mask2d, dtype0, corono)
             corono_field_re_t_tmp[i] = field_complex.real.flatten()
             Apod2d[i0, j0] = 0 
@@ -185,31 +183,26 @@ def compute_response_matrices_qrt(idx_pup, idx_dz, npp, ndz, ImPart, Pupil2d_qrt
     if corono is None:
         pass
     else:
-        # On ne redéfinit surtout pas Pupil2d_qrt ici car il est passé en argument !
         Apod2d_qrt = np.zeros((corono.nPup // 2, corono.nPup // 2))        
 
         if ImPart is True:
-            # Dimensionnement au quart de la taille du plan focal
             corono_field_re_t_tmp = np.empty((npp, corono.nlam, (corono.nImg2d // 2)**2))            
             corono_field_im_t_tmp = np.empty((npp, corono.nlam, (corono.nImg2d // 2)**2))
             
-            # Découpe du Lyot Stop en quadrant (comme dans le else)
+
             LyotStop2d_qrt = corono.LyotStop2d[corono.nPup // 2:, corono.nPup // 2:]
 
             for i, val in enumerate(idx_pup):
                 (i0, j0) = np.unravel_index(val, (corono.nPup // 2, corono.nPup // 2))
                 Apod2d_qrt[i0, j0] = 1            
                 
-                # On utilise la fonction de propagation QRT
                 test_qrt = (1. / 4) * compute_corono_field_2d_qrt(Apod2d_qrt, Pupil2d_qrt, LyotStop2d_qrt, mask2d_qrt, dtype0, corono)
                 
-                # Extraction des parties réelle et imaginaire avec les bonnes dimensions
                 corono_field_re_t_tmp[i] = np.reshape(test_qrt.real, (corono.nlam, (corono.nImg2d // 2)**2))
                 corono_field_im_t_tmp[i] = np.reshape(test_qrt.imag, (corono.nlam, (corono.nImg2d // 2)**2))
                 
                 Apod2d_qrt[i0, j0] = 0 
             
-            # Restriction à la Dark Zone
             corono_field_re_t = np.reshape(corono_field_re_t_tmp[:, :, idx_dz], (npp, corono.nlam * ndz))
             corono_field_re_t_tmp = None
             del corono_field_re_t_tmp
